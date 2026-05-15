@@ -1,0 +1,13 @@
+이 폴더에 나눔 폰트 4개를 넣어주세요:
+- NanumGothic.ttf
+- NanumGothicBold.ttf
+- NanumMyeongjo.ttf
+- NanumMyeongjoBold.ttf
+
+위치 안내:
+PC 원본: C:\Users\이설빈\AppData\Local\Microsoft\Windows\Fonts\
+복사 명령: 
+  xcopy C:\Users\이설빈\AppData\Local\Microsoft\Windows\Fonts\Nanum*.ttf .
+  
+또는 GitHub에서 다운로드:
+  https://github.com/rabin486-droid/kmong-tarot
