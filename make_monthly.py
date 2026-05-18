@@ -53,6 +53,8 @@ from integration import (
     josa_i, josa_eun, josa_eul, josa_wa, josa_ira,
 )
 
+from intro_pages import build_cover_page, build_intro_page
+
 # make_daily.py의 공통 유틸 + p2~p4 재활용
 from make_daily import (
     C, register_fonts, make_styles, pick_card_for_date,
@@ -65,15 +67,21 @@ from make_daily import (
 # make_weekly.py의 p6 (종합 리딩 + 꿈 메시지 + 내일 카드 미리보기)
 from make_weekly import build_weekly_page6
 
+# 배경지 페인터 (2026-05-17 추가)
+from backgrounds import make_bg_painter
+
 
 # ============================================================
 # 월간 푸터 — 1/210 ~ 210/210
 # ============================================================
 
 class MonthlyNumberedCanvas(rl_canvas.Canvas):
-    footer_template = '루밍의 MBTI 타로 운세  |  월간 운세  |  {name}님 전용  |  {n}/{total}'
+    # ⭐ 푸터 형식: {title}는 자유 입력 (예: "운세의 정원")
+    footer_template = '{title}  |  월간 운세  |  {name}님 전용  |  {n}/{total}'
     customer_name = '고객'
     primary_font = 'NanumGothic'
+    footer_title = '운세의 정원'   # ⭐ 자유 입력 제목 (기본값)
+    author_suffix = ''             # ⭐ 푸터 뒤에 붙일 텍스트 (예: 판매처)
 
     def __init__(self, *args, **kwargs):
         rl_canvas.Canvas.__init__(self, *args, **kwargs)
@@ -93,8 +101,12 @@ class MonthlyNumberedCanvas(rl_canvas.Canvas):
 
     def _draw_footer(self, page_num, total):
         text = self.footer_template.format(
+            title=self.footer_title,
             name=self.customer_name, n=page_num, total=total
         )
+        # ⭐ 자유 입력 정보가 있으면 푸터 뒤에 이어붙임
+        if self.author_suffix:
+            text = text + '  |  ' + self.author_suffix
         try:
             self.setFont(self.primary_font, 8)
         except Exception:
@@ -346,10 +358,17 @@ def build_monthly_page1(story, customer, profile, card_data, direction_kr,
     """월간 PDF의 첫 페이지 — 일간 p1과 동일 구조이나 제목·부제만 다름."""
     wd = ['월', '화', '수', '목', '금', '토', '일'][date_obj.weekday()]
     date_str = f"{date_obj.year}년 {date_obj.month}월 {date_obj.day}일 {wd}요일"
-    profile_str = (
-        f"{customer['mbti']} · {profile.get('STAR', '')} · "
-        f"{profile.get('ZOD', '')} · {profile.get('BIRTH', '')}"
-    )
+    # ⭐ MBTI '모름' 시 프로필 줄에서 MBTI 부분 생략
+    if customer['mbti'] == '모름':
+        profile_str = (
+            f"{profile.get('STAR', '')} · "
+            f"{profile.get('ZOD', '')} · {profile.get('BIRTH', '')}"
+        )
+    else:
+        profile_str = (
+            f"{customer['mbti']} · {profile.get('STAR', '')} · "
+            f"{profile.get('ZOD', '')} · {profile.get('BIRTH', '')}"
+        )
 
     bold_font = 'NanumGothicBold' if 'NanumGothicBold' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold'
     main_font = 'NanumGothic' if 'NanumGothic' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
@@ -364,12 +383,12 @@ def build_monthly_page1(story, customer, profile, card_data, direction_kr,
         f"월간 운세 · {date_str} · <b>Day {day_num} / {total_days}</b>"
     )
     story.append(Paragraph(subtitle_text, ParagraphStyle(
-        'mt_sub1', fontName=main_font, fontSize=12, leading=16,
+        'mt_sub1', fontName=main_font, fontSize=14, leading=18,
         alignment=TA_CENTER, textColor=C['PURPLE'], spaceAfter=4
     )))
     # ─── 부제 2: 프로필 ───
     story.append(Paragraph(profile_str, ParagraphStyle(
-        'mt_sub2', fontName=main_font, fontSize=11, leading=15,
+        'mt_sub2', fontName=main_font, fontSize=13, leading=17,
         alignment=TA_CENTER, textColor=C['DG'], spaceAfter=12
     )))
     story.append(sp(4))
@@ -386,11 +405,11 @@ def build_monthly_page1(story, customer, profile, card_data, direction_kr,
             styles['quote']
         )
 
-    info_label = ParagraphStyle('info_label', fontName=main_font, fontSize=11, leading=15, textColor=C['DG'])
-    info_card_name = ParagraphStyle('info_card', fontName=bold_font, fontSize=20, leading=25, textColor=C['BROWN'])
-    info_keyword = ParagraphStyle('info_kw', fontName=main_font, fontSize=11, leading=15, textColor=C['DG'], spaceAfter=8)
-    info_body = ParagraphStyle('info_body', fontName=main_font, fontSize=12, leading=18, alignment=TA_JUSTIFY, textColor=C['NIGHT'])
-    info_msg_label = ParagraphStyle('info_msg', fontName=bold_font, fontSize=12, leading=16, textColor=C['BROWN'], spaceBefore=6, spaceAfter=4)
+    info_label = ParagraphStyle('info_label', fontName=main_font, fontSize=13, leading=17, textColor=C['DG'])
+    info_card_name = ParagraphStyle('info_card', fontName=bold_font, fontSize=22, leading=27, textColor=C['BROWN'])
+    info_keyword = ParagraphStyle('info_kw', fontName=main_font, fontSize=13, leading=17, textColor=C['DG'], spaceAfter=8)
+    info_body = ParagraphStyle('info_body', fontName=main_font, fontSize=14, leading=20, alignment=TA_JUSTIFY, textColor=C['NIGHT'])
+    info_msg_label = ParagraphStyle('info_msg', fontName=bold_font, fontSize=14, leading=18, textColor=C['BROWN'], spaceBefore=6, spaceAfter=4)
 
     keyword_text = card_data.get('keyword', '')
     right_content = [
@@ -416,7 +435,7 @@ def build_monthly_page1(story, customer, profile, card_data, direction_kr,
 
     story.append(Paragraph(
         f"<b>{direction_kr}</b> 카드로 등장",
-        ParagraphStyle('dir', fontName=bold_font, fontSize=13, leading=17,
+        ParagraphStyle('dir', fontName=bold_font, fontSize=15, leading=19,
                        alignment=TA_CENTER, textColor=C['PURPLE'])
     ))
     story.append(sp(8))
@@ -487,7 +506,7 @@ def build_monthly_page5(story, customer, profile, lucky, card_key, styles):
     # ─── 확언 3문장 ───
     story.append(Paragraph(
         "이번 달의 확언 3문장 - 아침에 소리내어 읽어보세요 (또는, 속으로 읽어보세요.)",
-        ParagraphStyle('aff_title', fontName=bold_font, fontSize=16, leading=20,
+        ParagraphStyle('aff_title', fontName=bold_font, fontSize=18, leading=22,
                        alignment=TA_CENTER, textColor=C['INDIGO'],
                        spaceBefore=8, spaceAfter=8)
     ))
@@ -534,7 +553,7 @@ def build_monthly_page7(story, customer, profile, card_key, date_obj,
 
     # ─── 1) 달의 위상 ───
     phase_title_style = ParagraphStyle(
-        'phase_title', fontName=bold_font, fontSize=14, leading=18,
+        'phase_title', fontName=bold_font, fontSize=16, leading=20,
         alignment=TA_CENTER, textColor=C['CREAM']
     )
     phase_header = Table(
@@ -560,7 +579,7 @@ def build_monthly_page7(story, customer, profile, card_key, date_obj,
     kw_text = ' · '.join(phase['keywords'])
     story.append(Paragraph(
         f"<b>이 시기의 키워드 — {kw_text}</b>",
-        ParagraphStyle('phase_kw', fontName=bold_font, fontSize=13, leading=18,
+        ParagraphStyle('phase_kw', fontName=bold_font, fontSize=15, leading=20,
                        alignment=TA_CENTER, textColor=C['GOLD'],
                        spaceBefore=4, spaceAfter=8)
     ))
@@ -578,17 +597,17 @@ def build_monthly_page7(story, customer, profile, card_key, date_obj,
     story.append(Paragraph("✦ 오늘의 저널", styles['h2']))
     story.append(Paragraph(
         "<i>아래 세 가지 질문에 마음을 열고 답해보세요. 정답은 없습니다.</i>",
-        ParagraphStyle('jr_intro', fontName=main_font, fontSize=11, leading=15,
+        ParagraphStyle('jr_intro', fontName=main_font, fontSize=13, leading=17,
                        alignment=TA_LEFT, textColor=C['DG'], spaceAfter=6)
     ))
 
     for idx, (question, hint) in enumerate(qa_list, 1):
         story.append(kt([
             Paragraph(f"<b>Q{idx}. {question}</b>",
-                      ParagraphStyle('q', fontName=bold_font, fontSize=12, leading=17,
+                      ParagraphStyle('q', fontName=bold_font, fontSize=14, leading=19,
                                      textColor=C['BROWN'], spaceBefore=4, spaceAfter=2)),
             Paragraph(f"<i>→ {hint}</i>",
-                      ParagraphStyle('hint', fontName=main_font, fontSize=11, leading=15,
+                      ParagraphStyle('hint', fontName=main_font, fontSize=13, leading=17,
                                      textColor=C['NIGHT'], leftIndent=10, spaceAfter=6)),
         ]))
 
@@ -602,53 +621,8 @@ def build_monthly_page7(story, customer, profile, card_key, date_obj,
             Paragraph(goal_text, styles['quote']),
         ]))
 
-    # ─── 4) 작성자/사업자 정보 박스 (마지막 30일차에만) ───
-    if day_num is not None and total_days is not None and day_num == total_days and author_info:
-        story.append(sp(16))
-
-        author_label_style = ParagraphStyle(
-            'author_label', fontName=bold_font, fontSize=9, leading=12,
-            alignment=TA_CENTER, textColor=C['EARTH']
-        )
-        author_value_style = ParagraphStyle(
-            'author_value', fontName=main_font, fontSize=10, leading=14,
-            alignment=TA_CENTER, textColor=C['BROWN']
-        )
-
-        info_rows = []
-        if author_info.get('creator_name'):
-            info_rows.append([
-                Paragraph("작성자", author_label_style),
-                Paragraph(author_info['creator_name'], author_value_style)
-            ])
-        if author_info.get('business_name'):
-            info_rows.append([
-                Paragraph("사업자 정보", author_label_style),
-                Paragraph(author_info['business_name'], author_value_style)
-            ])
-        if author_info.get('contact'):
-            info_rows.append([
-                Paragraph("문의", author_label_style),
-                Paragraph(author_info['contact'], author_value_style)
-            ])
-        if author_info.get('platform'):
-            info_rows.append([
-                Paragraph("판매처", author_label_style),
-                Paragraph(author_info['platform'], author_value_style)
-            ])
-
-        if info_rows:
-            author_table = Table(info_rows, colWidths=[35*mm, 131*mm])
-            author_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), C['LE']),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 8),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-                ('TOPPADDING', (0, 0), (-1, -1), 6),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                ('GRID', (0, 0), (-1, -1), 0.3, C['EARTH']),
-            ]))
-            story.append(kt([author_table]))
+    # 작성자/판매처 정보는 모든 페이지 푸터에 표시됨 (MonthlyNumberedCanvas.author_suffix 사용)
+    # 따라서 마지막 30일차 박스는 제거됨.
 
     story.append(PageBreak())
 
@@ -657,7 +631,8 @@ def build_monthly_page7(story, customer, profile, card_key, date_obj,
 # 메인 함수
 # ============================================================
 
-def make_monthly_pdf(customer, start_date=None, days=30, output_path=None, author_info=None):
+def make_monthly_pdf(customer, start_date=None, days=30, output_path=None, author_info=None,
+                     store_link='', counsel_link='', shuffle_seed=None):
     """
     월간 PDF 생성 (7페이지 × 일수 = 일수 × 7페이지).
 
@@ -689,6 +664,8 @@ def make_monthly_pdf(customer, start_date=None, days=30, output_path=None, autho
         cards_db = json.load(f)
 
     mbti = customer['mbti']
+    # ⭐ "모름" 처리 — 카드 로딩에 사용할 안전 키
+    cards_lookup_key = next(iter(cards_db.keys())) if mbti == '모름' else mbti
 
     # 폰트 + 스타일
     register_fonts()
@@ -698,6 +675,9 @@ def make_monthly_pdf(customer, start_date=None, days=30, output_path=None, autho
     MonthlyNumberedCanvas.customer_name = customer['name']
     registered = pdfmetrics.getRegisteredFontNames()
     MonthlyNumberedCanvas.primary_font = 'NanumGothic' if 'NanumGothic' in registered else 'Helvetica'
+    # ⭐ 푸터 제목과 작성자/판매처 정보 설정
+    MonthlyNumberedCanvas.footer_title = (author_info or {}).get('footer_title', '운세의 정원') if author_info else '운세의 정원'
+    MonthlyNumberedCanvas.author_suffix = (author_info or {}).get('author_suffix', '') if author_info else ''
 
     # 출력 경로
     if output_path is None:
@@ -720,10 +700,10 @@ def make_monthly_pdf(customer, start_date=None, days=30, output_path=None, autho
     daily_data = []
     for i in range(days):
         d = start_date + timedelta(days=i)
-        card_id_base, direction = pick_card_for_date(d)
+        card_id_base, direction = pick_card_for_date(d, shuffle_seed=shuffle_seed)
         direction_kr = '정방향' if direction == 'upright' else '역방향'
         card_key = f"{card_id_base}_{direction}"
-        card_data = dict(cards_db[mbti][card_key])
+        card_data = dict(cards_db[cards_lookup_key][card_key])
         card_data['card_id_base'] = card_id_base
         lucky = get_monthly_items(profile, card_key, mbti, d)
         daily_data.append({
@@ -739,6 +719,31 @@ def make_monthly_pdf(customer, start_date=None, days=30, output_path=None, autho
 
     # ─── 30일 루프 — 각 일자에 7페이지씩 ───
     story = []
+    
+    # ⭐ 표지 페이지 (p1)
+    wd = ['월', '화', '수', '목', '금', '토', '일'][start_date.weekday()]
+    end_date = start_date + timedelta(days=days-1)
+    date_str_kor = (
+        f"{start_date.year}년 {start_date.month}월 {start_date.day}일 ~ "
+        f"{end_date.month}월 {end_date.day}일"
+    )
+    build_cover_page(
+        story, customer,
+        pdf_type='월간',
+        date_str=date_str_kor,
+        subtitle_extra=f'Day 1 → Day {days}',
+    )
+    
+    # ⭐ 도입 페이지 (p2)
+    build_intro_page(
+        story,
+        pdf_type='월간',
+        store_link=store_link,
+        counsel_link=counsel_link,
+        customer=customer,
+        date_str=date_str_kor,
+    )
+    
     total_days = days
     for day_idx, d in enumerate(daily_data):
         day_num = day_idx + 1
@@ -795,7 +800,12 @@ def make_monthly_pdf(customer, start_date=None, days=30, output_path=None, autho
             author_info=author_info,
         )
 
-    doc.build(story, canvasmaker=MonthlyNumberedCanvas)
+    # ⭐ 배경지 적용 (2026-05-17 추가)
+    # cover_page=1: 표지 페이지 (메인 제목/주문정보)
+    # skip_pages=(2,): 도입 페이지(p2)는 배경 OFF — 가독성 우선
+    bg = make_bg_painter(cover_page=1, skip_pages=(2,))
+
+    doc.build(story, onFirstPage=bg, onLaterPages=bg, canvasmaker=MonthlyNumberedCanvas)
     return output_path
 
 
