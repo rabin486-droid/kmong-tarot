@@ -1,3 +1,12 @@
 __pycache__/ 
 output/ 
 *.pyc 
+# 테스트 PDF (배경지 검증용 임시 파일)
+bg_test_*.pdf
+
+# 출력 PDF (고객 정보 포함)
+output/*.pdf
+
+# 파이썬 캐시
+__pycache__/
+*.pyc
